@@ -1,0 +1,31 @@
+name: Release
+on: release
+jobs:
+
+  build:
+    name: Publish artifacts
+    runs-on: ubuntu-latest
+    steps:
+    - name: Setup go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.go_version }}
+    - uses: actions/checkout@v2
+    - name: Directories
+      run: mkdir -p output/build-${GITHUB_REF#refs/*/}
+    - name: Build
+      run: make 
+    - name: Copy aerospike-prometheus-exporter
+      run: cp -v aerospike-prometheus-exporter output/build-${GITHUB_REF#refs/*/}/
+    - name: Copy ape.toml.template 
+      run: cp -v configs/ape.toml.template output/build-${GITHUB_REF#refs/*/}/
+    - name: Copy gauge_stats_list.toml 
+      run: cp -v configs/gauge_stats_list.toml output/build-${GITHUB_REF#refs/*/}/
+    - name: Copy docker-entrypoint.sh
+      run: cp -v docker-entrypoint.sh output/build-${GITHUB_REF#refs/*/}/
+    - name: Upload
+      uses: fnkr/github-action-ghr@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GHR_PATH: ./output
+        GHR_COMPRESS: gz
