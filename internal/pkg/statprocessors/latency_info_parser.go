@@ -182,6 +182,15 @@ func parseLatencyInfoLegacy(s string, latencyBucketsCount int) map[string]Latenc
 	return res
 }
 
+func readOperation(ip *LatencyInfoParser) (string, error) {
+	// Get operation (read, write etc.)
+	operation, err := ip.ReadUntil(':')
+	if err != nil {
+		return "", err
+	}
+	return operation, err
+}
+
 func readNamespaceAndOperation(ip *LatencyInfoParser) (string, string, error) {
 	if err := ip.PeekAndExpect("batch-index"); err == nil {
 		operation, err := ip.ReadUntil(':')
@@ -218,14 +227,22 @@ func readNamespaceAndOperation(ip *LatencyInfoParser) (string, string, error) {
 // Format (with and without latency data)
 // {test}-write:msec,4234.9,28.75,7.40,1.63,0.26,0.03,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00;
 // {test}-read:;
-func parseLatencyInfo(s string, latencyBucketsCount int) map[string]LatencyStatsMap {
+func parseLatencyInfo(s string, latencyBucketsCount int, namespaced bool) map[string]LatencyStatsMap {
 	ip := NewInfoParser(s)
 	res := map[string]LatencyStatsMap{}
 
+	operation := ""
+	namespaceName := ""
+	var err error
 	for {
-		namespaceName, operation, err := readNamespaceAndOperation(ip)
+		if !namespaced {
+			operation, err = readOperation(ip)
+		} else {
+			namespaceName, operation, err = readNamespaceAndOperation(ip)
+		}
 
 		if err != nil {
+			fmt.Println("error", err)
 			break
 		}
 

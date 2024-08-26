@@ -1,6 +1,7 @@
 package statprocessors
 
 import (
+	"fmt"
 	"strings"
 
 	commons "github.com/aerospike/aerospike-prometheus-exporter/internal/pkg/commons"
@@ -83,7 +84,7 @@ func isStatLatencyHistRelated(stat string) bool {
 }
 
 func (lw *LatencyStatsProcessor) Refresh(infoKeys []string, rawMetrics map[string]string) ([]AerospikeStat, error) {
-
+	fmt.Println(infoKeys)
 	allowedLatenciesList := make(map[string]struct{})
 	blockedLatenciessList := make(map[string]struct{})
 
@@ -117,13 +118,14 @@ func parseSingleLatenciesKey(singleLatencyKey string, rawMetrics map[string]stri
 
 	var latencyStats map[string]LatencyStatsMap
 
+	namespaced := strings.Contains(singleLatencyKey, "{")
+
 	if rawMetrics["latencies:"] != "" {
 		// in latest aerospike server>5.1 version, latencies: will always come as infokey, so no need to check other latency commands
-		latencyStats = parseLatencyInfo(rawMetrics[singleLatencyKey], int(config.Cfg.Aerospike.LatencyBucketsCount))
+		latencyStats = parseLatencyInfo(rawMetrics[singleLatencyKey], int(config.Cfg.Aerospike.LatencyBucketsCount), namespaced)
 	} else {
 		latencyStats = parseLatencyInfoLegacy(rawMetrics["latency:"], int(config.Cfg.Aerospike.LatencyBucketsCount))
 	}
-
 	// log.Tracef("latency-stats:%+v", latencyStats)
 	log.Tracef("latencies-stats:%+v:%+v", singleLatencyKey, rawMetrics[singleLatencyKey])
 
@@ -131,7 +133,6 @@ func parseSingleLatenciesKey(singleLatencyKey string, rawMetrics map[string]stri
 
 	for namespaceName, nsLatencyStats := range latencyStats {
 		for operation, opLatencyStats := range nsLatencyStats {
-
 			// operation comes from server as histogram-names
 			if config.Cfg.Aerospike.LatenciesMetricsAllowlistEnabled {
 				if _, ok := allowedLatenciesList[operation]; !ok {
@@ -148,8 +149,12 @@ func parseSingleLatenciesKey(singleLatencyKey string, rawMetrics map[string]stri
 			for i, labelValue := range opLatencyStats.(LatencyStatsMap)["bucketLabels"].([]string) {
 				// aerospike_latencies_<operation>_<timeunit>_bucket metric - Less than or equal to histogram buckets
 
-				labels := []string{commons.METRIC_LABEL_CLUSTER_NAME, commons.METRIC_LABEL_SERVICE, commons.METRIC_LABEL_NS, commons.METRIC_LABEL_LE}
-				labelValues := []string{ClusterName, Service, namespaceName, labelValue}
+				labels := []string{commons.METRIC_LABEL_CLUSTER_NAME, commons.METRIC_LABEL_SERVICE, commons.METRIC_LABEL_LE}
+				labelValues := []string{ClusterName, Service, labelValue}
+				if namespaced {
+					labels = append(labels, commons.METRIC_LABEL_NS)
+					labelValues = append(labelValues, namespaceName)
+				}
 				pv := opLatencyStats.(LatencyStatsMap)["bucketValues"].([]float64)[i]
 
 				statName := operation + "_" + opLatencyStats.(LatencyStatsMap)["timeUnit"].(string) + "_bucket"
