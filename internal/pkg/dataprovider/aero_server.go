@@ -100,7 +100,7 @@ func initAerospikeTLS() *tls.Config {
 	// load the server / client certificates
 	serverPool, clientPool = commons.LoadServerOrClientCertificates()
 
-	if serverPool != nil && clientPool != nil {
+	if serverPool != nil || clientPool != nil {
 		// we either have server pool or client pool of certificates
 		tlsConfig := &tls.Config{
 			Certificates:             clientPool,
