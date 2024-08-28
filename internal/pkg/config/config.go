@@ -211,7 +211,7 @@ func (c *Config) FetchKubernetesInfo(md toml.MetaData) {
 	Cfg.Agent.IsKubernetes = false
 
 	if envKubeServiceHost != "" && len(strings.TrimSpace(envKubeServiceHost)) > 0 {
-		Cfg.Agent.IsKubernetes = true
+		Cfg.Agent.IsKubernetes = false
 		log.Info("Exporter is running in Kubernetes")
 
 		// get host-name
