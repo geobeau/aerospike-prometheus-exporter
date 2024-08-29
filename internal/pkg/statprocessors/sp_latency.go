@@ -113,12 +113,17 @@ func (lw *LatencyStatsProcessor) Refresh(infoKeys []string, rawMetrics map[strin
 	return allMetricsToSend, nil
 }
 
+func isNamespaced(singleLatencyKey string) bool {
+	// By default, all histograms are namespaced. As it is hard to know if one is not namespace, it is done on a per histogram basis
+	return !strings.Contains(singleLatencyKey, "fabric")
+}
+
 func parseSingleLatenciesKey(singleLatencyKey string, rawMetrics map[string]string,
 	allowedLatenciesList map[string]struct{}, blockedLatenciessList map[string]struct{}) []AerospikeStat {
 
 	var latencyStats map[string]LatencyStatsMap
 
-	namespaced := strings.Contains(singleLatencyKey, "{")
+	namespaced := isNamespaced(singleLatencyKey)
 
 	if rawMetrics["latencies:"] != "" {
 		// in latest aerospike server>5.1 version, latencies: will always come as infokey, so no need to check other latency commands
